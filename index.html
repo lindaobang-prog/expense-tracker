@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f5f7fa" />
+    <meta name="description" content="快速記帳，掌握每日額度與個人資產。" data-i18n-content="metaDescription" />
+    <title>日常記帳</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="日常記帳首頁" data-i18n-aria="homeLabel">
+          <span class="brand-mark" aria-hidden="true">日</span>
+          <span data-i18n="appName">日常記帳</span>
+        </a>
+        <div class="topbar-tools">
+          <nav class="advanced-actions" aria-label="進階工具" data-i18n-aria="advancedTools">
+            <button type="button" class="quiet-button" data-open-panel="finance" data-i18n="financeCenter">理財中心</button>
+            <button type="button" class="quiet-button" data-open-panel="reports" data-i18n="reportsSettings">報表與設定</button>
+          </nav>
+          <div class="rate-control">
+            <label for="exchange-rate" data-i18n="exchangeRate">匯率</label>
+            <span>1 HKD =</span>
+            <input id="exchange-rate" type="number" min="0.0001" step="0.0001" inputmode="decimal" aria-label="人民幣兌港幣匯率" data-i18n-aria="rateLabel" />
+            <span>CNY</span>
+          </div>
+          <div class="language-switch" role="group" aria-label="選擇語言" data-i18n-aria="languageLabel">
+            <button type="button" class="language-button is-active" data-language="zh-Hant" aria-pressed="true">繁</button>
+            <button type="button" class="language-button" data-language="zh-Hans" aria-pressed="false">简</button>
+            <button type="button" class="language-button" data-language="en" aria-pressed="false">EN</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="status-banner" id="status-banner" aria-label="今日額度與總資產" data-i18n-aria="statusLabel">
+        <div class="status-item budget-status">
+          <span class="status-symbol" aria-hidden="true">◷</span>
+          <div class="status-copy">
+            <span class="status-label" data-i18n="availableToday">今日剩餘可用額度</span>
+            <strong id="budget-status-value"></strong>
+            <span class="status-detail" id="budget-status-detail"></span>
+          </div>
+          <div class="status-progress" id="budget-status-progress" aria-hidden="true">
+            <span id="budget-status-fill"></span>
+          </div>
+        </div>
+        <div class="status-divider" aria-hidden="true"></div>
+        <div class="status-item asset-status">
+          <span class="status-symbol asset-symbol" aria-hidden="true">◈</span>
+          <div class="status-copy">
+            <span class="status-label" data-i18n="netWorth">總資產淨值</span>
+            <strong id="net-worth-value">HK$0.00</strong>
+            <span class="status-detail" id="net-worth-detail"></span>
+          </div>
+          <button type="button" class="status-toggle" id="net-worth-toggle" aria-label="切換淨資產顯示幣種" data-i18n-aria="toggleCurrencyLabel">HK$ / ¥</button>
+        </div>
+      </section>
+
+      <main>
+        <section class="quick-card panel" aria-labelledby="quick-title">
+          <div class="quick-heading">
+            <div>
+              <p class="eyebrow" data-i18n="quickEyebrow">QUICK ENTRY</p>
+              <h1 id="quick-title" data-i18n="quickTitle">記下一筆</h1>
+            </div>
+            <span class="today-label" id="today-label"></span>
+          </div>
+
+          <form id="transaction-form" autocomplete="off">
+            <div class="quick-input-row">
+              <label class="sr-only" for="amount" data-i18n="amount">金額</label>
+              <div class="amount-entry">
+                <span class="amount-currency" id="amount-currency">HK$</span>
+                <input id="amount" name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0" required />
+              </div>
+              <select id="currency" name="currency" aria-label="記帳幣種" data-i18n-aria="currencyLabel">
+                <option value="HKD">HK$</option>
+                <option value="CNY">¥</option>
+              </select>
+              <fieldset class="type-toggle">
+                <legend class="sr-only" data-i18n="typeLabel">收支類型</legend>
+                <label class="type-option">
+                  <input type="radio" name="type" value="expense" checked />
+                  <span data-i18n="expense">支出</span>
+                </label>
+                <label class="type-option">
+                  <input type="radio" name="type" value="income" />
+                  <span data-i18n="income">收入</span>
+                </label>
+              </fieldset>
+            </div>
+
+            <input id="category" name="category" type="hidden" value="food" />
+            <div class="category-pills" id="category-pills" role="group" aria-label="選擇分類" data-i18n-aria="categoryOptions">
+              <button class="category-pill is-selected" type="button" data-category="food" aria-pressed="true"><span aria-hidden="true">🍽</span><span data-category-label="food">餐飲</span></button>
+              <button class="category-pill" type="button" data-category="transport" aria-pressed="false"><span aria-hidden="true">🚇</span><span data-category-label="transport">交通</span></button>
+              <button class="category-pill" type="button" data-category="learning" aria-pressed="false"><span aria-hidden="true">📚</span><span data-category-label="learning">學習</span></button>
+              <button class="category-pill" type="button" data-category="shopping" aria-pressed="false"><span aria-hidden="true">🛍</span><span data-category-label="shopping">購物</span></button>
+              <button class="category-pill" type="button" data-category="leisure" aria-pressed="false"><span aria-hidden="true">🎧</span><span data-category-label="leisure">娛樂</span></button>
+              <button class="category-pill" type="button" data-category="other" aria-pressed="false"><span aria-hidden="true">✦</span><span data-category-label="other">其他</span></button>
+            </div>
+
+            <div class="quick-footer">
+              <div class="date-shortcuts" role="group" aria-label="記帳日期" data-i18n-aria="quickDateLabel">
+                <button type="button" class="date-chip is-selected" data-date-mode="today" aria-pressed="true" data-i18n="today">今天</button>
+                <button type="button" class="date-chip" data-date-mode="yesterday" aria-pressed="false" data-i18n="yesterday">昨天</button>
+                <button type="button" class="date-chip" data-date-mode="custom" aria-pressed="false" data-i18n="customDate">自選</button>
+                <input id="date" name="date" type="date" class="custom-date" aria-label="自選記帳日期" data-i18n-aria="customDateLabel" hidden />
+              </div>
+              <label class="note-input">
+                <span class="sr-only" data-i18n="note">備註</span>
+                <input id="note" name="note" type="text" maxlength="80" placeholder="備註（選填）" data-i18n-placeholder="notePlaceholder" />
+              </label>
+              <button class="primary-button" type="submit" data-i18n="addRecord">記帳</button>
+            </div>
+            <label class="account-picker" id="account-picker-wrap" hidden>
+              <span data-i18n="chooseAccount">選擇帳戶</span>
+              <select id="entry-account" aria-label="記帳帳戶" data-i18n-aria="chooseAccount"></select>
+            </label>
+            <p class="form-feedback" id="form-feedback" role="status" aria-live="polite"></p>
+          </form>
+
+          <div class="template-shortcuts" id="template-shortcuts" hidden>
+            <span class="template-shortcut-label" data-i18n="templates">固定支出</span>
+            <div id="quick-templates"></div>
+          </div>
+        </section>
+
+        <section class="recent-section" aria-labelledby="recent-title">
+          <div class="recent-heading">
+            <div>
+              <p class="eyebrow" data-i18n="recentEyebrow">RECENT</p>
+              <h2 id="recent-title" data-i18n="recentTitle">近期明細</h2>
+            </div>
+            <span class="record-count" id="recent-count"></span>
+          </div>
+          <div class="recent-list panel" id="recent-list"></div>
+        </section>
+      </main>
+
+      <dialog class="advanced-dialog" id="advanced-dialog" aria-labelledby="dialog-title">
+        <div class="dialog-shell">
+          <header class="dialog-header">
+            <div>
+              <p class="eyebrow" data-i18n="workspaceEyebrow">PERSONAL FINANCE</p>
+              <h2 id="dialog-title"></h2>
+            </div>
+            <button type="button" class="icon-button" id="close-dialog" aria-label="關閉" data-i18n-aria="closeDialog">×</button>
+          </header>
+          <nav class="dialog-tabs" role="tablist" aria-label="進階面板分頁" data-i18n-aria="advancedTabs">
+            <button type="button" class="dialog-tab is-active" role="tab" aria-selected="true" data-panel-tab="finance" data-i18n="financeCenter">理財中心</button>
+            <button type="button" class="dialog-tab" role="tab" aria-selected="false" data-panel-tab="reports" data-i18n="reportsSettings">報表與設定</button>
+          </nav>
+
+          <section class="dialog-content" id="finance-view" role="tabpanel">
+            <section class="advanced-section">
+              <div class="section-title-row">
+                <div>
+                  <p class="eyebrow" data-i18n="accountsEyebrow">ACCOUNTS</p>
+                  <h3 data-i18n="accountsTitle">帳戶與資產</h3>
+                </div>
+                <span class="section-icon" aria-hidden="true">◈</span>
+              </div>
+              <p class="section-hint" data-i18n="accountsHint">校準帳戶目前餘額；之後的記帳會自動增減。選擇是否納入每日額度。</p>
+              <div class="account-list" id="account-list"></div>
+              <form class="add-account-form" id="account-form">
+                <input name="name" type="text" maxlength="32" placeholder="帳戶名稱" data-i18n-placeholder="accountNamePlaceholder" required />
+                <select name="currency" aria-label="帳戶幣種" data-i18n-aria="currencyLabel">
+                  <option value="HKD">HK$</option>
+                  <option value="CNY">¥</option>
+                </select>
+                <select name="kind" aria-label="帳戶類型" data-i18n-aria="accountKindLabel">
+                  <option value="daily" data-i18n="dailyAccount">日常帳戶</option>
+                  <option value="savings" data-i18n="savingsAccount">大額儲蓄</option>
+                </select>
+                <input name="balance" type="number" min="0" step="0.01" inputmode="decimal" placeholder="目前餘額" data-i18n-placeholder="currentBalancePlaceholder" required />
+                <button class="secondary-button" type="submit" data-i18n="addAccount">新增帳戶</button>
+              </form>
+            </section>
+
+            <section class="advanced-section">
+              <div class="section-title-row">
+                <div>
+                  <p class="eyebrow" data-i18n="budgetEyebrow">DAILY BUDGET</p>
+                  <h3 data-i18n="budgetSettingsTitle">每日額度</h3>
+                </div>
+                <span class="section-icon budget-section-icon" aria-hidden="true">◷</span>
+              </div>
+              <form class="finance-form" id="budget-form">
+                <label class="setting-check">
+                  <input id="smart-budget" name="smart" type="checkbox" />
+                  <span data-i18n="smartBudget">智能剩餘額度計算</span>
+                </label>
+                <p class="section-hint" data-i18n="smartBudgetHint">按本月剩餘預算與剩餘天數，估算每日可用額度。</p>
+                <div class="setting-fields">
+                  <label class="field">
+                    <span class="field-label" data-i18n="dailyLimit">固定每日上限</span>
+                    <input id="daily-limit" name="dailyLimit" type="number" min="0" step="0.01" inputmode="decimal" />
+                  </label>
+                  <label class="field">
+                    <span class="field-label" data-i18n="monthlyLimit">本月總預算</span>
+                    <input id="monthly-limit" name="monthlyLimit" type="number" min="0" step="0.01" inputmode="decimal" />
+                  </label>
+                  <label class="field">
+                    <span class="field-label" data-i18n="budgetCurrency">額度幣種</span>
+                    <select id="budget-currency" name="currency">
+                      <option value="HKD">HK$</option>
+                      <option value="CNY">¥</option>
+                    </select>
+                  </label>
+                </div>
+                <button class="secondary-button" type="submit" data-i18n="saveBudget">儲存額度</button>
+              </form>
+            </section>
+
+            <section class="advanced-section">
+              <div class="section-title-row">
+                <div>
+                  <p class="eyebrow" data-i18n="goalsEyebrow">SAVING GOALS</p>
+                  <h3 data-i18n="goalsTitle">心願存錢罐</h3>
+                </div>
+                <span class="section-icon goal-section-icon" aria-hidden="true">♡</span>
+              </div>
+              <div class="goal-list" id="goal-list"></div>
+              <form class="add-goal-form" id="goal-form">
+                <input name="name" type="text" maxlength="40" placeholder="目標名稱，例如：旅行基金" data-i18n-placeholder="goalNamePlaceholder" required />
+                <input name="target" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="目標金額" data-i18n-placeholder="goalAmountPlaceholder" required />
+                <select name="currency" aria-label="目標幣種" data-i18n-aria="currencyLabel">
+                  <option value="HKD">HK$</option>
+                  <option value="CNY">¥</option>
+                </select>
+                <button class="secondary-button" type="submit" data-i18n="addGoal">建立目標</button>
+              </form>
+            </section>
+
+            <section class="advanced-section">
+              <div class="section-title-row">
+                <div>
+                  <p class="eyebrow" data-i18n="templatesEyebrow">RECURRING</p>
+                  <h3 data-i18n="templatesTitle">週期性固定開支</h3>
+                </div>
+                <span class="section-icon template-section-icon" aria-hidden="true">↻</span>
+              </div>
+              <div class="recurring-list" id="recurring-list"></div>
+              <form class="add-template-form" id="template-form">
+                <input name="name" type="text" maxlength="32" placeholder="名稱，例如：每月房租" data-i18n-placeholder="templateNamePlaceholder" required />
+                <input name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="金額" data-i18n-placeholder="amountPlaceholder" required />
+                <select name="currency" aria-label="模板幣種" data-i18n-aria="currencyLabel">
+                  <option value="HKD">HK$</option>
+                  <option value="CNY">¥</option>
+                </select>
+                <select name="category" aria-label="模板分類" data-i18n-aria="categoryOptions">
+                  <option value="food" data-category-option="food">餐飲</option>
+                  <option value="transport" data-category-option="transport">交通</option>
+                  <option value="learning" data-category-option="learning">學習</option>
+                  <option value="shopping" data-category-option="shopping">購物</option>
+                  <option value="leisure" data-category-option="leisure">娛樂</option>
+                  <option value="other" data-category-option="other">其他</option>
+                </select>
+                <button class="secondary-button" type="submit" data-i18n="addTemplate">新增模板</button>
+              </form>
+            </section>
+          </section>
+
+          <section class="dialog-content reports-view" id="reports-view" role="tabpanel" hidden>
+            <div class="report-toolbar">
+              <div class="period-buttons" role="group" aria-label="報表時間範圍" data-i18n-aria="reportPeriods">
+                <button type="button" class="period-button is-active" data-report-period="week" data-i18n="thisWeek">本週</button>
+                <button type="button" class="period-button" data-report-period="month" data-i18n="thisMonth">本月</button>
+                <button type="button" class="period-button" data-report-period="custom" data-i18n="customDate">自訂</button>
+              </div>
+              <div class="report-custom-range" id="report-custom-range" hidden>
+                <input id="report-start" type="date" aria-label="報表開始日期" data-i18n-aria="reportStart" />
+                <span aria-hidden="true">—</span>
+                <input id="report-end" type="date" aria-label="報表結束日期" data-i18n-aria="reportEnd" />
+              </div>
+              <label class="search-box">
+                <span aria-hidden="true">⌕</span>
+                <input id="note-search" type="search" placeholder="搜尋備註關鍵字" data-i18n-placeholder="searchNotes" />
+              </label>
+              <span class="report-count" id="report-count"></span>
+            </div>
+            <div class="reports-grid">
+              <section class="report-card">
+                <h3 data-i18n="categoryReport">支出分類</h3>
+                <div class="report-chart-wrap">
+                  <canvas id="report-category-chart" role="img" aria-label="支出分類圓餅圖" data-i18n-aria="categoryChartLabel"></canvas>
+                  <p class="report-empty" id="category-chart-empty" data-i18n="noReportExpenses">這段期間尚無支出。</p>
+                </div>
+              </section>
+              <section class="report-card">
+                <h3 data-i18n="trendReport">近 7 日消費趨勢</h3>
+                <div class="report-chart-wrap trend-wrap">
+                  <canvas id="trend-chart" role="img" aria-label="近七日消費趨勢折線圖" data-i18n-aria="trendChartLabel"></canvas>
+                  <p class="report-empty" id="trend-chart-empty" data-i18n="noTrendExpenses">近 7 日尚無支出。</p>
+                </div>
+              </section>
+            </div>
+            <div class="report-actions">
+              <div>
+                <h3 data-i18n="backupTitle">資料備份</h3>
+                <p data-i18n="backupHint">JSON 備份包含帳戶、目標、預算、模板與全部帳單。</p>
+              </div>
+              <div class="backup-buttons">
+                <button class="secondary-button" id="export-json" type="button" data-i18n="exportJson">匯出完整備份</button>
+                <label class="secondary-button file-button">
+                  <span data-i18n="importJson">匯入 JSON 備份</span>
+                  <input id="import-json" type="file" accept="application/json,.json" />
+                </label>
+                <button class="text-button" id="export-csv" type="button" data-i18n="exportCsv">匯出 CSV</button>
+                <button class="text-button danger-button" id="clear-data" type="button" data-i18n="clearData">清空帳單</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </dialog>
+
+      <footer class="page-footer"><span data-i18n="footer">把每一筆記好，讓理財更簡單。</span></footer>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+  </body>
+</html>
